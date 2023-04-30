@@ -1,6 +1,10 @@
 # rm_serial_driver
 RoboMaster 视觉系统与电控系统的串口通讯模块
 
+<img src="docs/rm_vision.svg" alt="rm_vision" width="200" height="200">
+
+该项目为 [rm_vision](https://github.com/chenjunnn/rm_vision) 的子模块
+
 ## Overview
 
 本模块基于 [transport_drivers](https://github.com/ros-drivers/transport_drivers) 实现了 [rm_auto_aim](https://github.com/chenjunnn/rm_auto_aim) 项目与电控部分通讯的功能，也可作为使用 ros2 作为开发框架的参赛队的串口通讯模块参考
