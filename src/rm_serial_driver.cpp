@@ -61,7 +61,7 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
 
   // Create Subscription
   target_sub_ = this->create_subscription<auto_aim_interfaces::msg::Target>(
-    "/processor/target", rclcpp::SensorDataQoS(),
+    "/tracker/target", rclcpp::SensorDataQoS(),
     std::bind(&RMSerialDriver::sendData, this, std::placeholders::_1));
 }
 
@@ -144,7 +144,7 @@ void RMSerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr 
     packet.v_yaw = msg->v_yaw;
     packet.r1 = msg->radius_1;
     packet.r2 = msg->radius_2;
-    packet.z_2 = msg->z_2;
+    packet.z_2 = msg->dz;
     crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
 
     std::vector<uint8_t> data = toVector(packet);

@@ -29,7 +29,7 @@ RoboMaster 视觉系统与电控系统的串口通讯模块
 - 云台姿态 `pitch` 和 `yaw`, 单位和方向请参考 https://www.ros.org/reps/rep-0103.html
 - 当前云台瞄准的位置 `aim_x, aim_y, aim_z`，用于发布可视化 Marker
 
-视觉端发送 armor_processor 的输出，即对于目标机器人的观测，具体的运动预测、装甲板选择、弹道解算在电控端完成
+视觉端发送 armor_tracker 的输出，即对于目标机器人的观测，具体的运动预测、装甲板选择、弹道解算在电控端完成
 
 ## 电控端的处理
 
