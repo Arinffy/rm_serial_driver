@@ -13,7 +13,7 @@ namespace rm_serial_driver
 struct ReceivePacket
 {
   uint8_t header = 0x5A;
-  uint8_t robot_color : 1;
+  uint8_t detect_color : 1;  // 0-red 1-blue
   uint8_t reserved : 7;
   float pitch;
   float yaw;

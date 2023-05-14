@@ -38,10 +38,16 @@ private:
 
   void reopenPort();
 
+  void setParam(const rclcpp::Parameter & param);
+
   std::unique_ptr<IoContext> owned_ctx_;
   std::string device_name_;
   std::unique_ptr<drivers::serial_driver::SerialPortConfig> device_config_;
   std::unique_ptr<drivers::serial_driver::SerialDriver> serial_driver_;
+
+  bool initial_set_param_ = false;
+  uint8_t previous_receive_color_ = 0;
+  rclcpp::AsyncParametersClient::SharedPtr detector_param_client_;
 
   visualization_msgs::msg::Marker aiming_point_;
 

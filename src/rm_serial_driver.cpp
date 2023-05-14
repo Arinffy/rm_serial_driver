@@ -37,6 +37,9 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
   latency_pub_ = this->create_publisher<std_msgs::msg::Float64>("/latency", 10);
   marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/aiming_point", 10);
 
+  // Detect parameter client
+  detector_param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "armor_detector");
+
   try {
     serial_driver_->init_port(device_name_, *device_config_);
     if (!serial_driver_->port()->is_open()) {
@@ -101,6 +104,12 @@ void RMSerialDriver::receiveData()
         bool crc_ok =
           crc16::Verify_CRC16_Check_Sum(reinterpret_cast<const uint8_t *>(&packet), sizeof(packet));
         if (crc_ok) {
+          if (!initial_set_param_ || packet.detect_color != previous_receive_color_) {
+            RCLCPP_INFO(get_logger(), "Setting detect_color to %d...", packet.detect_color);
+            setParam(rclcpp::Parameter("detect_color", packet.detect_color));
+            previous_receive_color_ = packet.detect_color;
+          }
+
           sensor_msgs::msg::JointState joint_state;
           joint_state.header.stamp = this->now();
           joint_state.name.push_back("pitch_joint");
@@ -133,8 +142,8 @@ void RMSerialDriver::receiveData()
 void RMSerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr msg)
 {
   const static std::map<std::string, uint8_t> id_unit8_map{
-    {"outpost", 0}, {"1", 1}, {"1", 1},     {"2", 2},   {"3", 3},
-    {"4", 4},       {"5", 5}, {"guard", 6}, {"base", 7}};
+    {"", 0},  {"outpost", 0}, {"1", 1}, {"1", 1},     {"2", 2},
+    {"3", 3}, {"4", 4},       {"5", 5}, {"guard", 6}, {"base", 7}};
 
   try {
     SendPacket packet;
@@ -264,6 +273,27 @@ void RMSerialDriver::reopenPort()
       rclcpp::sleep_for(std::chrono::seconds(1));
       reopenPort();
     }
+  }
+}
+
+void RMSerialDriver::setParam(const rclcpp::Parameter & param)
+{
+  if (detector_param_client_->service_is_ready()) {
+    detector_param_client_->set_parameters(
+      {param},
+      [this, param](
+        const std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> & results) {
+        for (const auto & result : results.get()) {
+          if (!result.successful) {
+            RCLCPP_ERROR(get_logger(), "Failed to set parameter: %s", result.reason.c_str());
+            return;
+          }
+        }
+        RCLCPP_INFO(get_logger(), "Successfully set detect_color to %ld!", param.as_int());
+        initial_set_param_ = true;
+      });
+  } else {
+    RCLCPP_WARN(get_logger(), "Service not ready, skipping parameter set");
   }
 }
 
