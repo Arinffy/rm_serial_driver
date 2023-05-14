@@ -14,8 +14,7 @@ struct ReceivePacket
 {
   uint8_t header = 0x5A;
   uint8_t robot_color : 1;
-  uint8_t task_mode : 2;
-  uint8_t reserved : 5;
+  uint8_t reserved : 7;
   float pitch;
   float yaw;
   float aim_x;
@@ -27,7 +26,10 @@ struct ReceivePacket
 struct SendPacket
 {
   uint8_t header = 0xA5;
-  bool tracking;
+  bool tracking : 1;
+  uint8_t id : 3;          // 0-outpost 6-guard 7-base
+  uint8_t armors_num : 3;  // 2-balance 3-outpost 4-normal
+  uint8_t reserved : 1;
   float x;
   float y;
   float z;
@@ -38,7 +40,7 @@ struct SendPacket
   float v_yaw;
   float r1;
   float r2;
-  float z_2;
+  float dz;
   uint16_t checksum = 0;
 } __attribute__((packed));
 

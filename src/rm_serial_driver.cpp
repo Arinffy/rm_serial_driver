@@ -12,6 +12,7 @@
 // C++ system
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -108,7 +109,7 @@ void RMSerialDriver::receiveData()
           joint_state.position.push_back(packet.yaw);
           joint_state_pub_->publish(joint_state);
 
-          if (packet.aim_x > 0.01) {
+          if (abs(packet.aim_x) > 0.01) {
             aiming_point_.header.stamp = this->now();
             aiming_point_.pose.position.x = packet.aim_x;
             aiming_point_.pose.position.y = packet.aim_y;
@@ -131,9 +132,15 @@ void RMSerialDriver::receiveData()
 
 void RMSerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr msg)
 {
+  const static std::map<std::string, uint8_t> id_unit8_map{
+    {"outpost", 0}, {"1", 1}, {"1", 1},     {"2", 2},   {"3", 3},
+    {"4", 4},       {"5", 5}, {"guard", 6}, {"base", 7}};
+
   try {
     SendPacket packet;
     packet.tracking = msg->tracking;
+    packet.id = id_unit8_map.at(msg->id);
+    packet.armors_num = msg->armors_num;
     packet.x = msg->position.x;
     packet.y = msg->position.y;
     packet.z = msg->position.z;
@@ -144,7 +151,7 @@ void RMSerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr 
     packet.v_yaw = msg->v_yaw;
     packet.r1 = msg->radius_1;
     packet.r2 = msg->radius_2;
-    packet.z_2 = msg->dz;
+    packet.dz = msg->dz;
     crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
 
     std::vector<uint8_t> data = toVector(packet);
