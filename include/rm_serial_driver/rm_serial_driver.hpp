@@ -51,6 +51,7 @@ private:
 
   visualization_msgs::msg::Marker aiming_point_;
 
+  double timestamp_offset_ = 0;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
   rclcpp::Subscription<auto_aim_interfaces::msg::Target>::SharedPtr target_sub_;
 

@@ -32,6 +32,7 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
   getParams();
 
   // Create Publisher
+  timestamp_offset_ = this->declare_parameter("timestamp_offset", 0.0);
   joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>(
     "/joint_states", rclcpp::QoS(rclcpp::KeepLast(1)));
   latency_pub_ = this->create_publisher<std_msgs::msg::Float64>("/latency", 10);
@@ -111,7 +112,9 @@ void RMSerialDriver::receiveData()
           }
 
           sensor_msgs::msg::JointState joint_state;
-          joint_state.header.stamp = this->now();
+          timestamp_offset_ = this->get_parameter("timestamp_offset").as_double();
+          joint_state.header.stamp =
+            this->now() + rclcpp::Duration::from_seconds(timestamp_offset_);
           joint_state.name.push_back("pitch_joint");
           joint_state.name.push_back("yaw_joint");
           joint_state.position.push_back(packet.pitch);
