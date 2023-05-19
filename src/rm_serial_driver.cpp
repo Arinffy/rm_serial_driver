@@ -41,6 +41,9 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
   // Detect parameter client
   detector_param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "armor_detector");
 
+  // Tracker reset service client
+  reset_tracker_client_ = this->create_client<std_srvs::srv::Trigger>("/tracker/reset");
+
   try {
     serial_driver_->init_port(device_name_, *device_config_);
     if (!serial_driver_->port()->is_open()) {
@@ -106,9 +109,12 @@ void RMSerialDriver::receiveData()
           crc16::Verify_CRC16_Check_Sum(reinterpret_cast<const uint8_t *>(&packet), sizeof(packet));
         if (crc_ok) {
           if (!initial_set_param_ || packet.detect_color != previous_receive_color_) {
-            RCLCPP_INFO(get_logger(), "Setting detect_color to %d...", packet.detect_color);
             setParam(rclcpp::Parameter("detect_color", packet.detect_color));
             previous_receive_color_ = packet.detect_color;
+          }
+
+          if (packet.reset_tracker) {
+            resetTracker();
           }
 
           sensor_msgs::msg::JointState joint_state;
@@ -281,11 +287,17 @@ void RMSerialDriver::reopenPort()
 
 void RMSerialDriver::setParam(const rclcpp::Parameter & param)
 {
-  if (detector_param_client_->service_is_ready()) {
-    detector_param_client_->set_parameters(
-      {param},
-      [this, param](
-        const std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> & results) {
+  if (!detector_param_client_->service_is_ready()) {
+    RCLCPP_WARN(get_logger(), "Service not ready, skipping parameter set");
+    return;
+  }
+
+  if (
+    !set_param_future_.valid() ||
+    set_param_future_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+    RCLCPP_INFO(get_logger(), "Setting detect_color to %ld...", param.as_int());
+    set_param_future_ = detector_param_client_->set_parameters(
+      {param}, [this, param](const ResultFuturePtr & results) {
         for (const auto & result : results.get()) {
           if (!result.successful) {
             RCLCPP_ERROR(get_logger(), "Failed to set parameter: %s", result.reason.c_str());
@@ -295,9 +307,19 @@ void RMSerialDriver::setParam(const rclcpp::Parameter & param)
         RCLCPP_INFO(get_logger(), "Successfully set detect_color to %ld!", param.as_int());
         initial_set_param_ = true;
       });
-  } else {
-    RCLCPP_WARN(get_logger(), "Service not ready, skipping parameter set");
   }
+}
+
+void RMSerialDriver::resetTracker()
+{
+  if (!reset_tracker_client_->service_is_ready()) {
+    RCLCPP_WARN(get_logger(), "Service not ready, skipping tracker reset");
+    return;
+  }
+
+  auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
+  reset_tracker_client_->async_send_request(request);
+  RCLCPP_INFO(get_logger(), "Reset tracker!");
 }
 
 }  // namespace rm_serial_driver

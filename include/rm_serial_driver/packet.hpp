@@ -14,7 +14,8 @@ struct ReceivePacket
 {
   uint8_t header = 0x5A;
   uint8_t detect_color : 1;  // 0-red 1-blue
-  uint8_t reserved : 7;
+  bool reset_tracker : 1;
+  uint8_t reserved : 6;
   float pitch;
   float yaw;
   float aim_x;
