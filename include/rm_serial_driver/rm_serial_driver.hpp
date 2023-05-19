@@ -4,10 +4,12 @@
 #ifndef RM_SERIAL_DRIVER__RM_SERIAL_DRIVER_HPP_
 #define RM_SERIAL_DRIVER__RM_SERIAL_DRIVER_HPP_
 
+#include <tf2_ros/transform_broadcaster.h>
+
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
-#include <sensor_msgs/msg/joint_state.hpp>
 #include <serial_driver/serial_driver.hpp>
 #include <std_msgs/msg/float64.hpp>
 #include <std_srvs/srv/trigger.hpp>
@@ -63,10 +65,13 @@ private:
   // Aimimg point receiving from serial port for visualization
   visualization_msgs::msg::Marker aiming_point_;
 
+  // Broadcast tf from odom to gimbal_link
   double timestamp_offset_ = 0;
-  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
+  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+
   rclcpp::Subscription<auto_aim_interfaces::msg::Target>::SharedPtr target_sub_;
 
+  // For debug usage
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr latency_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_pub_;
 

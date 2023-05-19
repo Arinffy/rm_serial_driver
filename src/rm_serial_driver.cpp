@@ -1,13 +1,13 @@
 // Copyright (c) 2022 ChenJun
 // Licensed under the Apache-2.0 License.
 
-#include "rm_serial_driver/rm_serial_driver.hpp"
+#include <tf2/LinearMath/Quaternion.h>
 
-// ROS
 #include <rclcpp/logging.hpp>
 #include <rclcpp/qos.hpp>
 #include <rclcpp/utilities.hpp>
 #include <serial_driver/serial_driver.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 // C++ system
 #include <cstdint>
@@ -19,6 +19,7 @@
 
 #include "rm_serial_driver/crc.hpp"
 #include "rm_serial_driver/packet.hpp"
+#include "rm_serial_driver/rm_serial_driver.hpp"
 
 namespace rm_serial_driver
 {
@@ -31,10 +32,11 @@ RMSerialDriver::RMSerialDriver(const rclcpp::NodeOptions & options)
 
   getParams();
 
-  // Create Publisher
+  // TF broadcaster
   timestamp_offset_ = this->declare_parameter("timestamp_offset", 0.0);
-  joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>(
-    "/joint_states", rclcpp::QoS(rclcpp::KeepLast(1)));
+  tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+
+  // Create Publisher
   latency_pub_ = this->create_publisher<std_msgs::msg::Float64>("/latency", 10);
   marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("/aiming_point", 10);
 
@@ -117,15 +119,15 @@ void RMSerialDriver::receiveData()
             resetTracker();
           }
 
-          sensor_msgs::msg::JointState joint_state;
+          geometry_msgs::msg::TransformStamped t;
           timestamp_offset_ = this->get_parameter("timestamp_offset").as_double();
-          joint_state.header.stamp =
-            this->now() + rclcpp::Duration::from_seconds(timestamp_offset_);
-          joint_state.name.push_back("pitch_joint");
-          joint_state.name.push_back("yaw_joint");
-          joint_state.position.push_back(packet.pitch);
-          joint_state.position.push_back(packet.yaw);
-          joint_state_pub_->publish(joint_state);
+          t.header.stamp = this->now() + rclcpp::Duration::from_seconds(timestamp_offset_);
+          t.header.frame_id = "odom";
+          t.child_frame_id = "gimbal_link";
+          tf2::Quaternion q;
+          q.setRPY(packet.roll, packet.pitch, packet.yaw);
+          t.transform.rotation = tf2::toMsg(q);
+          tf_broadcaster_->sendTransform(t);
 
           if (abs(packet.aim_x) > 0.01) {
             aiming_point_.header.stamp = this->now();
